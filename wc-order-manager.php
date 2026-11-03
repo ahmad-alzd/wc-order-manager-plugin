@@ -81,6 +81,10 @@ function wcom_bootstrap() {
 	if ( is_admin() ) {
 		new WCOM_Admin();
 	}
+
+	// REST routes are registered on rest_api_init regardless of
+	// is_admin(), since the app calls them from outside wp-admin.
+	new WCOM_REST_API();
 }
 add_action( 'plugins_loaded', 'wcom_bootstrap' );
 
