@@ -1,1 +1,1 @@
-# wc-order-manager-plugin
+# wc-order-manager-plugintest
