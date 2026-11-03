@@ -34,6 +34,10 @@ includes/
   class-wcom-auth.php       تایید امضای HMAC درخواست‌ها
   class-wcom-rest-api.php   تعریف اندپوینت‌های REST (namespace wcom/v1)
   class-wcom-order-formatter.php قالب‌بندی داده سفارش ووکامرس برای خروجی API
+  class-wcom-device-tokens.php   ذخیره توکن FCM هر credential (دستگاه)
+  class-wcom-fcm-settings.php    ذخیره رمزنگاری‌شده Service Account فایربیس
+  class-wcom-fcm.php             ارسال نوتیفیکیشن از طریق FCM HTTP v1 API
+  class-wcom-order-notifications.php هوک سفارش جدید → ارسال Push به همه دستگاه‌ها
 admin/
   class-wcom-admin.php      صفحه تنظیمات در پنل مدیریت
 uninstall.php                پاکسازی اختیاری هنگام حذف کامل پلاگین
@@ -50,6 +54,7 @@ uninstall.php                پاکسازی اختیاری هنگام حذف ک�
 | GET | `/wp-json/wcom/v1/orders` | لیست سفارشات (پارامتر: `status`, `page`, `per_page`) |
 | GET | `/wp-json/wcom/v1/orders/{id}` | جزئیات کامل یک سفارش |
 | POST | `/wp-json/wcom/v1/orders/{id}/status` | تغییر وضعیت سفارش (بدنه: `{"status": "processing"}`) |
+| POST | `/wp-json/wcom/v1/device-token` | ثبت/آپدیت توکن FCM این دستگاه (بدنه: `{"fcm_token": "..."}`) |
 
 ### امضای درخواست (HMAC)
 
@@ -76,8 +81,19 @@ SHA256_HEX(بدنه خام درخواست؛ برای بدنه خالی = sha256(
 
 درخواست‌هایی که بیش از ۵ دقیقه با ساعت سرور اختلاف داشته باشن یا Nonce تکراری داشته باشن رد می‌شن.
 
+## راه‌اندازی نوتیفیکیشن (Firebase)
+
+1. در [Firebase Console](https://console.firebase.google.com) یک پروژه بساز (یا از پروژه موجود استفاده کن)
+2. برو به **Project Settings → Service Accounts → Generate new private key** و فایل JSON رو دانلود کن
+3. در پنل وردپرسی، **WC Order Manager → Push notifications (Firebase)**، محتوای کامل فایل JSON رو پیست کن و ذخیره کن
+4. از این به بعد، به محض ثبت هر سفارش جدید در ووکامرس، به تمام دستگاه‌هایی که توکن FCM ثبت کرده‌باشن (از طریق اندپوینت `/device-token`) پوش نوتیفیکیشن ارسال می‌شه
+
+> **نکته:** فایل JSON شامل یک کلید خصوصی هست و هیچ‌وقت در دیتابیس به‌صورت متن ساده ذخیره نمی‌شه — دقیقاً مثل Secret مربوط به API Key، با همون روش رمزنگاری (AES-256-GCM) ذخیره می‌شه.
+>
+> **نکته درباره تحریم:** به دلیل تحریم‌های آمریکا، دریافت توکن FCM روی گوشی‌هایی که آی‌پی/حساب گوگلشون به ایران مرتبطه، گاهی و به‌صورت متناوب با خطا مواجه می‌شه (این محدودیت از طرف گوگل اعمال می‌شه، نه فیلترینگ داخلی). برای همین در فاز ۵ اپ، علاوه بر Push، یک مکانیزم Polling هم به‌عنوان Fallback در نظر گرفته می‌شه تا اگه نوتیف Push نرسید، سفارش‌های جدید باز هم با کمی تاخیر توی لیست اپ دیده بشن.
+
 ## نقشه راه
 
 - [x] فاز ۱ — زیرساخت: دیتابیس، Key/Secret، HMAC
 - [x] فاز ۲ — API سفارشات (Verify، لیست، جزئیات، تغییر وضعیت)
-- [ ] فاز ۳ — نوتیفیکیشن لحظه‌ای (Firebase)
+- [x] فاز ۳ — نوتیفیکیشن لحظه‌ای (Firebase)

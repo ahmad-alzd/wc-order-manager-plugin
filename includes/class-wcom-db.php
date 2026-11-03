@@ -18,4 +18,14 @@ class WCOM_DB {
 		global $wpdb;
 		return $wpdb->prefix . WCOM_TABLE_CREDENTIALS;
 	}
+
+	/**
+	 * Fully-qualified (prefixed) device tokens table name.
+	 *
+	 * @return string
+	 */
+	public static function device_tokens_table() {
+		global $wpdb;
+		return $wpdb->prefix . WCOM_TABLE_DEVICE_TOKENS;
+	}
 }

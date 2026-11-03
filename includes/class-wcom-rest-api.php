@@ -87,6 +87,22 @@ class WCOM_REST_API {
 
 		register_rest_route(
 			self::NAMESPACE_V1,
+			'/device-token',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'register_device_token' ),
+				'permission_callback' => array( $this, 'check_auth' ),
+				'args'                => array(
+					'fcm_token' => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE_V1,
 			'/orders/(?P<id>\d+)/status',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -183,6 +199,31 @@ class WCOM_REST_API {
 		}
 
 		return new WP_REST_Response( array( 'statuses' => $statuses ), 200 );
+	}
+
+	/**
+	 * POST /wcom/v1/device-token
+	 * Body (JSON): { "fcm_token": "..." }
+	 *
+	 * Called by the app right after Firebase hands it a registration
+	 * token (on first launch, and again whenever Firebase rotates the
+	 * token), so this device can receive new-order push notifications.
+	 */
+	public function register_device_token( WP_REST_Request $request ) {
+		$credential = $request->get_param( '_wcom_credential' );
+		$fcm_token  = trim( (string) $request->get_param( 'fcm_token' ) );
+
+		if ( '' === $fcm_token ) {
+			return new WP_Error( 'wcom_missing_token', __( 'fcm_token is required.', 'wc-order-manager' ), array( 'status' => 400 ) );
+		}
+
+		$saved = WCOM_Device_Tokens::upsert( $credential['id'], $fcm_token );
+
+		if ( ! $saved ) {
+			return new WP_Error( 'wcom_token_save_failed', __( 'Could not save the device token.', 'wc-order-manager' ), array( 'status' => 500 ) );
+		}
+
+		return new WP_REST_Response( array( 'registered' => true ), 200 );
 	}
 
 	/**

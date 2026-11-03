@@ -20,6 +20,9 @@ class WCOM_Admin {
 		add_action( 'admin_post_wcom_revoke_credential', array( $this, 'handle_revoke' ) );
 		add_action( 'admin_post_wcom_reactivate_credential', array( $this, 'handle_reactivate' ) );
 		add_action( 'admin_post_wcom_delete_credential', array( $this, 'handle_delete' ) );
+
+		add_action( 'admin_post_wcom_save_fcm_settings', array( $this, 'handle_save_fcm_settings' ) );
+		add_action( 'admin_post_wcom_clear_fcm_settings', array( $this, 'handle_clear_fcm_settings' ) );
 	}
 
 	/**
@@ -145,6 +148,39 @@ class WCOM_Admin {
 					<?php endif; ?>
 				</tbody>
 			</table>
+
+			<h2><?php esc_html_e( 'Push notifications (Firebase)', 'wc-order-manager' ); ?></h2>
+			<?php if ( WCOM_FCM_Settings::is_configured() ) : ?>
+				<p>
+					<?php
+					printf(
+						/* translators: %s: Firebase project id. */
+						esc_html__( 'Connected to Firebase project: %s', 'wc-order-manager' ),
+						'<code>' . esc_html( WCOM_FCM_Settings::get_project_id() ) . '</code>'
+					);
+					?>
+				</p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<?php wp_nonce_field( 'wcom_clear_fcm_settings' ); ?>
+					<input type="hidden" name="action" value="wcom_clear_fcm_settings" />
+					<button type="submit" class="button" onclick="return confirm('<?php echo esc_js( __( 'Disconnect Firebase? New-order push notifications will stop until you reconnect.', 'wc-order-manager' ) ); ?>');">
+						<?php esc_html_e( 'Disconnect Firebase', 'wc-order-manager' ); ?>
+					</button>
+				</form>
+			<?php else : ?>
+				<p>
+					<?php esc_html_e( 'Not connected yet. In the Firebase Console, go to Project Settings → Service Accounts → Generate new private key, then paste the downloaded JSON file\'s contents below.', 'wc-order-manager' ); ?>
+				</p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<?php wp_nonce_field( 'wcom_save_fcm_settings' ); ?>
+					<input type="hidden" name="action" value="wcom_save_fcm_settings" />
+					<p>
+						<textarea name="service_account_json" rows="10" class="large-text code"
+							placeholder='{"type": "service_account", "project_id": "...", ...}' required></textarea>
+					</p>
+					<?php submit_button( __( 'Save Firebase credentials', 'wc-order-manager' ) ); ?>
+				</form>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -211,6 +247,8 @@ class WCOM_Admin {
 			'revoked'     => __( 'Credential revoked.', 'wc-order-manager' ),
 			'reactivated' => __( 'Credential reactivated.', 'wc-order-manager' ),
 			'deleted'     => __( 'Credential deleted.', 'wc-order-manager' ),
+			'fcm_saved'   => __( 'Firebase credentials saved. Push notifications are now active.', 'wc-order-manager' ),
+			'fcm_cleared' => __( 'Firebase disconnected.', 'wc-order-manager' ),
 			'error'       => __( 'Something went wrong. Please try again.', 'wc-order-manager' ),
 		);
 
@@ -348,6 +386,35 @@ class WCOM_Admin {
 
 		WCOM_Credentials::delete( $id );
 		wp_safe_redirect( $this->page_url( 'deleted' ) );
+		exit;
+	}
+
+	public function handle_save_fcm_settings() {
+		if ( ! current_user_can( $this->capability() ) ) {
+			wp_die( esc_html__( 'You do not have permission to do this.', 'wc-order-manager' ) );
+		}
+		check_admin_referer( 'wcom_save_fcm_settings' );
+
+		$json   = isset( $_POST['service_account_json'] ) ? wp_unslash( $_POST['service_account_json'] ) : '';
+		$result = WCOM_FCM_Settings::save( $json );
+
+		if ( is_wp_error( $result ) ) {
+			wp_safe_redirect( $this->page_url( 'error' ) );
+			exit;
+		}
+
+		wp_safe_redirect( $this->page_url( 'fcm_saved' ) );
+		exit;
+	}
+
+	public function handle_clear_fcm_settings() {
+		if ( ! current_user_can( $this->capability() ) ) {
+			wp_die( esc_html__( 'You do not have permission to do this.', 'wc-order-manager' ) );
+		}
+		check_admin_referer( 'wcom_clear_fcm_settings' );
+
+		WCOM_FCM_Settings::clear();
+		wp_safe_redirect( $this->page_url( 'fcm_cleared' ) );
 		exit;
 	}
 }

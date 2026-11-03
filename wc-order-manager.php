@@ -17,12 +17,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WCOM_VERSION', '0.1.0' );
-define( 'WCOM_DB_VERSION', '1.0.0' );
+define( 'WCOM_VERSION', '0.2.0' );
+define( 'WCOM_DB_VERSION', '1.1.0' );
 define( 'WCOM_PLUGIN_FILE', __FILE__ );
 define( 'WCOM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCOM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WCOM_TABLE_CREDENTIALS', 'wcom_api_credentials' );
+define( 'WCOM_TABLE_DEVICE_TOKENS', 'wcom_device_tokens' );
 
 /**
  * Simple autoloader for the plugin's own classes.
@@ -85,6 +86,10 @@ function wcom_bootstrap() {
 	// REST routes are registered on rest_api_init regardless of
 	// is_admin(), since the app calls them from outside wp-admin.
 	new WCOM_REST_API();
+
+	if ( class_exists( 'WooCommerce' ) ) {
+		WCOM_Order_Notifications::init();
+	}
 }
 add_action( 'plugins_loaded', 'wcom_bootstrap' );
 

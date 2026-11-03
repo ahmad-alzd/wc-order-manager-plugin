@@ -40,6 +40,24 @@ class WCOM_Activator {
 
 		dbDelta( $sql );
 
+		$tokens_table = $wpdb->prefix . WCOM_TABLE_DEVICE_TOKENS;
+
+		// One row per credential (one issued Key/Secret = one app
+		// install), holding the most recent FCM registration token
+		// for that device. The token is overwritten in place
+		// (upsert) whenever the app re-registers, e.g. after Firebase
+		// rotates it.
+		$sql_tokens = "CREATE TABLE {$tokens_table} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			credential_id BIGINT UNSIGNED NOT NULL,
+			fcm_token VARCHAR(255) NOT NULL,
+			updated_at DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
+			PRIMARY KEY  (id),
+			UNIQUE KEY credential_id (credential_id)
+		) {$charset_collate};";
+
+		dbDelta( $sql_tokens );
+
 		update_option( 'wcom_db_version', WCOM_DB_VERSION );
 	}
 }
